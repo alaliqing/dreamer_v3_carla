@@ -141,8 +141,8 @@ def simulate(agent, envs, steps=0, episodes=0, state=None):
       reward = [reward[i]*(1-done[i]) for i in range(len(envs))]
     # Step agents.
     obs = {k: np.stack([o[k] for o in obs]) for k in obs[0]}
-    print(f'reward value: , {reward}')
-    print(f'done value:, {done}')
+    # print(f'reward value: , {reward}')
+    # print(f'done value:, {done}')
     action, agent_state = agent(obs, done, agent_state, reward)
     if isinstance(action, dict):
       action = [
@@ -151,7 +151,7 @@ def simulate(agent, envs, steps=0, episodes=0, state=None):
     else:
       action = np.array(action)
     assert len(action) == len(envs)
-    print("action value: ", action[0]["action"])
+    # print("action value: ", action[0]["action"])
     # Step envs.
     results = [e.step(a) for e, a in zip(envs, action)]
     obs, reward, done = zip(*[p[:3] for p in results])

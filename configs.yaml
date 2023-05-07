@@ -1,12 +1,12 @@
 defaults:
 
-  logdir: /fzi/ids/jk639/no_backup/data/dreamer3
+  logdir: s3://tks-zx.fzi.de:9000/clearml/bogdoll/rl_traffic_rule_Jing/dreamer3
   traindir: null
   evaldir: null
   offline_traindir: ''
   offline_evaldir: ''
   seed: 0
-  steps: 2e6
+  steps: 1e6
   eval_every: 1e4
   log_every: 1e4
   reset_every: 0

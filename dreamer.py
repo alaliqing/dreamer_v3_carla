@@ -6,7 +6,7 @@ import pathlib
 import sys
 import warnings
 
-from clearml import Task, Logger
+from clearml import Task
 
 os.environ["MUJOCO_GL"] = "egl"
 
@@ -196,15 +196,8 @@ def make_env(config, logger, mode, train_eps, eval_eps):
         )
         env = wrappers.OneHotAction(env)
     elif suite == "carla":
-        env = wrappers.Carla(
-            'Town02_Opt',
-            host='tks-iris.fzi.de',
-            port=2000,
-            action_repeat=config.action_repeat,
-            size=config.size,
-            grayscale=config.grayscale,
-            done=False
-        )
+        env = wrappers.Carla('Town01_Opt', host='tks-iris.fzi.de', port=2000, action_repeat=config.action_repeat,
+                             size=config.size, grayscale=config.grayscale, done=False)
         env = wrappers.NormalizeActions(env)
     elif suite == "dmlab":
         env = wrappers.DeepMindLabyrinth(
@@ -232,7 +225,7 @@ def process_episode(config, logger, mode, train_eps, eval_eps, episode):
     filename = tools.save_episodes(directory, [episode])[0]
     length = len(episode["reward"]) - 1
     score = float(episode["reward"].astype(np.float64).sum())
-    video = episode["image"]
+    video = episode["camera_v"]
     # video = video[1000]
     # print("video shape:", video.shape)
     if mode == "eval":
@@ -251,18 +244,25 @@ def process_episode(config, logger, mode, train_eps, eval_eps, episode):
     logger.scalar(f"{mode}_length", length)
     logger.scalar(f"{mode}_episodes", len(cache))
     # logger.image(f"{mode}_image", video)
-    # if mode == "eval" or config.expl_gifs:
-        # logger.video(f"{mode}_policy", video[None])
+    if mode == "eval" or mode == "train" or config.expl_gifs:
+        logger.video(f"{mode}_policy", video[None])
     logger.write()
 
 
 def main(config):
-    task = Task.init(project_name="bogdoll/rl_traffic_rule_Jing", task_name="google_dreamer_v3_carla", reuse_last_task_id=True)
-    # # task.set_base_docker(
-    # #             "nvcr.io/nvidia/pytorch:21.10-py3",
-    # #             docker_setup_bash_script="apt-get update && apt-get install -y python3-opencv",
-    # #             docker_arguments="-e NVIDIA_DRIVER_CAPABILITIES=all"  # --ipc=host",
-    # #             )
+    Task.add_requirements(package_name="gym",
+                          package_version="",)
+    Task.add_requirements(package_name="scikit-image",
+                          package_version="",)
+    Task.add_requirements(package_name="moviepy",
+                          package_version="",)
+    
+    task = Task.init(project_name="bogdoll/rl_traffic_rule_Jing", task_name="google_dreamer_v3_carla", reuse_last_task_id=F)
+    task.set_base_docker(
+                "nvcr.io/nvidia/pytorch:22.12-py3",
+                docker_setup_bash_script="apt-get update && apt-get install -y python3-opencv",
+                docker_arguments="-e NVIDIA_DRIVER_CAPABILITIES=all --network=host"  # --ipc=host",
+                )
     # task.set_base_docker(
     #             "tks-zx-01.fzi.de/autonomous-agents/core-carla:21.10",
     #             docker_setup_bash_script="apt-get update && apt-get install -y python3-opencv",
@@ -270,14 +270,14 @@ def main(config):
     #         )
     # # task.add_requirements(
     # #     package_name="setuptools",
-    # #     package_version="59.5.0",
+    # #     package_version="59.5.0", 
     # # )
     # task.add_requirements(
     #     package_name="moviepy",
     #     package_version="1.0.3",
     # )
     # logger_clearml = task.get_logger()
-    # task.execute_remotely('tks-zx-01', clone=False, exit_process=True)
+    task.execute_remotely('docker', clone=False, exit_process=True)
 
     logdir = pathlib.Path(config.logdir).expanduser()
     config.traindir = config.traindir or logdir / "train_eps"
@@ -311,7 +311,7 @@ def main(config):
     train_envs = [make("train") for _ in range(config.envs)]
     eval_envs = [make("eval") for _ in range(config.envs)]
     acts = train_envs[0].action_space
-    print("acts high and low", acts.high, acts.low)
+    # print("acts high and low", acts.high, acts.low)
     config.num_actions = acts.n if hasattr(acts, "n") else acts.shape[0]
 
     if not config.offline_traindir:
@@ -344,13 +344,14 @@ def main(config):
     agent = Dreamer(config, logger, train_dataset).to(config.device)
     agent.requires_grad_(requires_grad=False)
     if (logdir / "latest_model.pt").exists():
+        print("really???")
         agent.load_state_dict(torch.load(logdir / "latest_model.pt"))
         agent._should_pretrain._once = False
-
     state = None
     while agent._step < config.steps:
         logger.write()
         print("Start evaluation.")
+        # print("evaluation dataset: ", next(eval_dataset)["action"][:6, 5:])
         video_pred = agent._wm.video_pred(next(eval_dataset))
         logger.video("eval_openl", to_np(video_pred))
         eval_policy = functools.partial(agent, training=False)

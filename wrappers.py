@@ -285,11 +285,11 @@ class Carla:
 
         # Configure ss camera sensor
         self.ss_camera_bp = self.bp_lib.find('sensor.camera.semantic_segmentation')
-        self.ss_camera_bp.set_attribute('image_size_x', f'{size[0]}')
-        self.ss_camera_bp.set_attribute('image_size_y', f'{size[1]}')
+        self.ss_camera_bp.set_attribute('image_size_x', f'{256}')
+        self.ss_camera_bp.set_attribute('image_size_y', f'{256}')
         self.ss_camera_bp.set_attribute('fov', '110')
-        self.ss_cam_location = carla.Location(0.8, 0, self.BEV_DISTANCE)
-        self.ss_cam_rotation = carla.Rotation(0, 0, 0)
+        self.ss_cam_location = carla.Location(10, 0, self.BEV_DISTANCE)
+        self.ss_cam_rotation = carla.Rotation(-90, 0, 0)
         self.ss_cam_transform = carla.Transform(self.ss_cam_location, self.ss_cam_rotation)
         self.ss_camera_bp.set_attribute('sensor_tick', '0.02')
 
@@ -352,7 +352,7 @@ class Carla:
 
         # Spawn ego vehicle
         transform = self.spawn_points[0]
-        self.vehicle = self.world.spawn_actor(self.vehicle_bp, transform)
+        self.vehicle = self.world.try_spawn_actor(self.vehicle_bp, transform)
         self.actor_list.append(self.vehicle)
 
         # Attach ss_camera sensor
@@ -417,7 +417,8 @@ class Carla:
         if self.time_step > self.max_time_episode:
             done = True
 
-        obs = self.get_observation()
+        obs, image = self.get_observation()
+        info["camera_v"] = image
 
         # Update timesteps
         self.time_step += 1
@@ -435,7 +436,7 @@ class Carla:
         obs = {
             'image': camera.astype(np.uint8),
         }
-        return obs
+        return obs, image
 
     def __process_sensor_data(self, image):
         """ Observations directly viewable with OpenCV in CHW format """
@@ -503,6 +504,7 @@ class CollectDataset:
         else:
             transition["action"] = action
         transition["reward"] = reward
+        transition["camera_v"] = info["camera_v"]
         transition["discount"] = info.get("discount", np.array(1 - float(done)))
         self._episode.append(transition)
         if done:
