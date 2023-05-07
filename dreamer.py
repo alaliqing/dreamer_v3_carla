@@ -196,7 +196,7 @@ def make_env(config, logger, mode, train_eps, eval_eps):
         )
         env = wrappers.OneHotAction(env)
     elif suite == "carla":
-        env = wrappers.Carla('Town01_Opt', host='tks-iris.fzi.de', port=2000, action_repeat=config.action_repeat,
+        env = wrappers.Carla('Town01_Opt', host='tks-hummer.fzi.de', port=2000, action_repeat=config.action_repeat,
                              size=config.size, grayscale=config.grayscale, done=False)
         env = wrappers.NormalizeActions(env)
     elif suite == "dmlab":
@@ -257,7 +257,7 @@ def main(config):
     Task.add_requirements(package_name="moviepy",
                           package_version="",)
     
-    task = Task.init(project_name="bogdoll/rl_traffic_rule_Jing", task_name="google_dreamer_v3_carla", reuse_last_task_id=F)
+    task = Task.init(project_name="bogdoll/rl_traffic_rule_Jing", task_name="google_dreamer_v3_carla", reuse_last_task_id=False)
     task.set_base_docker(
                 "nvcr.io/nvidia/pytorch:22.12-py3",
                 docker_setup_bash_script="apt-get update && apt-get install -y python3-opencv",
@@ -268,10 +268,10 @@ def main(config):
     #             docker_setup_bash_script="apt-get update && apt-get install -y python3-opencv",
     #             docker_arguments="-e NVIDIA_DRIVER_CAPABILITIES=all",  # --ipc=host",
     #         )
-    # # task.add_requirements(
-    # #     package_name="setuptools",
-    # #     package_version="59.5.0", 
-    # # )
+    # task.add_requirements(
+    #     package_name="setuptools",
+    #     package_version="59.5.0", 
+    # )
     # task.add_requirements(
     #     package_name="moviepy",
     #     package_version="1.0.3",

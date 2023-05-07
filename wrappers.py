@@ -519,7 +519,7 @@ class CollectDataset:
         return obs, reward, done, info
 
     def reset(self):
-        obs = self._env.reset()
+        obs, _ = self._env.reset()
         transition = obs.copy()
         # Missing keys will be filled with a zeroed out version of the first
         # transition, because we do not know what action information the agent will
